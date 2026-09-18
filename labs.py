@@ -1,14 +1,14 @@
 ﻿# -*- coding: utf-8 -*-
 """
 Modulos de Laboratorio Interativo:
-1. Simulador de Machine Learning (Regressao Linear e Previsao)
+1. Simulador de Machine Learning (Regressao Linear e Previsao) usando Altair interativo
 2. Simulador de RAG (Busca Semantica em Base de Documentos)
 """
 
 import streamlit as st
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
+import altair as alt
 
 def render_lab_machine_learning():
     st.subheader("🧠 Como Funciona o Machine Learning na Pratica?")
@@ -55,23 +55,47 @@ def render_lab_machine_learning():
         st.caption(f"Formula aprendida: Faturamento = ({coefs[0]:.2f} x Investimento) + {coefs[1]:,.2f}")
 
     with col_view:
-        st.markdown("##### Grafico: A IA Encontrando o Padrao nos Dados:")
-        fig, ax = plt.subplots(figsize=(6, 4.2))
-        ax.scatter(df_treino["Investimento_Marketing"], df_treino["Faturamento_Real"], color="#1f77b4", label="Historico Real (Dados)")
+        st.markdown("##### 📊 Grafico Interativo: A IA Encontrando o Padrao nos Dados")
         
-        # Linha aprendida
-        x_linha = np.linspace(500, 18000, 100)
-        y_linha = np.polyval(coefs, x_linha)
-        ax.plot(x_linha, y_linha, color="#ff7f0e", linestyle="--", linewidth=2, label="Linha de Tendencia (IA)")
+        # 1. Pontos do Historico Real (Scatter)
+        scatter = alt.Chart(df_treino).mark_circle(size=90, color="#1f77b4").encode(
+            x=alt.X("Investimento_Marketing:Q", title="Investimento em Marketing (R$)", axis=alt.Axis(format="$,.0f")),
+            y=alt.Y("Faturamento_Real:Q", title="Faturamento Real (R$)", axis=alt.Axis(format="$,.0f")),
+            tooltip=[
+                alt.Tooltip("Investimento_Marketing:Q", format="$,.2f", title="Investimento"),
+                alt.Tooltip("Faturamento_Real:Q", format="$,.2f", title="Faturamento Real")
+            ]
+        )
 
-        # Ponto previsto
-        ax.scatter([investimento_futuro], [faturamento_estimado], color="red", s=120, zorder=5, label="Sua Previsao Futura")
+        # 2. Linha de Tendencia Aprendida pela IA (Line)
+        x_vals = np.linspace(500, 18000, 80)
+        y_vals = np.polyval(coefs, x_vals)
+        df_linha = pd.DataFrame({"x": x_vals, "y": y_vals})
+        line = alt.Chart(df_linha).mark_line(color="#ff7f0e", strokeDash=[6, 4], strokeWidth=3).encode(
+            x="x:Q",
+            y="y:Q"
+        )
 
-        ax.set_xlabel("Investimento em Marketing (R$)")
-        ax.set_ylabel("Faturamento (R$)")
-        ax.legend()
-        ax.grid(True, linestyle=":", alpha=0.5)
-        st.pyplot(fig)
+        # 3. Ponto Previsto pelo Usuario (Destaque em Vermelho)
+        df_ponto = pd.DataFrame({
+            "x": [investimento_futuro],
+            "y": [faturamento_estimado]
+        })
+        ponto = alt.Chart(df_ponto).mark_circle(size=220, color="red").encode(
+            x="x:Q",
+            y="y:Q",
+            tooltip=[
+                alt.Tooltip("x:Q", format="$,.2f", title="Investimento Planejado"),
+                alt.Tooltip("y:Q", format="$,.2f", title="Faturamento Previsto pela IA")
+            ]
+        )
+
+        grafico_final = (scatter + line + ponto).properties(
+            height=380
+        ).interactive()
+
+        st.altair_chart(grafico_final, use_container_width=True)
+        st.caption("💡 **Dica Interativa:** Passe o mouse sobre os pontos para ver os valores exatos e use a roda do mouse para dar zoom!")
 
 
 def render_lab_rag():
@@ -140,8 +164,8 @@ def render_lab_rag():
             if melhor_doc and maior_match > 0:
                 st.success(
                     f"🤖 **Resposta do Assistente Corporativo:**\n\n"
-                    f"De acordo com a nossa **{melhor_doc['titulo']}**, para receber o reembolso de combustível você deve "
-                    f"apresentar o comprovante fiscal com o CNPJ da empresa. O valor correspondente será creditado na folha do **dia 15**!"
+                    f"De acordo com a nossa **{melhor_doc['titulo']}**, para receber o reembolso de combustivel voce deve "
+                    f"apresentar o comprovante fiscal com o CNPJ da empresa. O valor correspondente sera creditado na folha do **dia 15**!"
                 )
             else:
                 st.write("A IA respondeu: *'Desculpe, nao encontrei essa informacao nos documentos oficiais da empresa.'*")
